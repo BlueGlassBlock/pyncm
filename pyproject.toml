@@ -1,3 +1,31 @@
+[project]
+name = "pyncm-async"
+dynamic = ["version"]
+description = "NeteaseCloudMusic APIs for Python 3.x 适用于 Python 3 的网易云音乐异步 API"
+readme = "README.md"
+license = "Apache-2.0"
+requires-python = ">=3.8"
+authors = [
+    {name = "greats3an", email = "greats3an@gmail.com"},
+]
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "Operating System :: OS Independent",
+]
+dependencies = [
+    "httpx",
+]
+
+[project.urls]
+Homepage = "https://github.com/greats3an/pyncm"
+
+[tool.flit.module]
+name = "pyncm_async"
+
+[build-system]
+requires = ["flit_core >=3.2,<4"]
+build-backend = "flit_core.buildapi"
+
 [tool.black]
 line-length = 88
 target-version = ['py38']
