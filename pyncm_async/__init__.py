@@ -15,6 +15,7 @@ import logging
 import json
 import os
 import httpx
+from contextvars import ContextVar
 
 logger = logging.getLogger("pyncm.api")
 if "PYNCM_DEBUG" in os.environ:
@@ -25,13 +26,10 @@ if "PYNCM_DEBUG" in os.environ:
         level=debug_level, format="[%(levelname).4s] %(name)s %(message)s"
     )
 
-DEVICE_ID_DEFAULT = "pyncm!"
-# This sometimes fails with some strings, for no particular reason. Though `pyncm!` seem to work everytime..?
-# Though with this, all pyncm users would then be sharing the same device Id.
-# Don't think that would be of any issue though...
+DEVICE_ID_DEFAULT = "V2463A"
 """默认 deviceID"""
-SESSION_STACK = dict()
 
+NCM_SESSION = ContextVar("NCM_SESSION")
 
 class Session(httpx.AsyncClient):
     """
@@ -77,12 +75,11 @@ class Session(httpx.AsyncClient):
     # 优先使用 HTTP 作 API 请求协议
 
     async def __aenter__(self) -> httpx.AsyncClient:
-        SESSION_STACK.setdefault(current_thread(), list())
-        SESSION_STACK[current_thread()].append(self)
+        self.session_ctx_var_token = NCM_SESSION.set(self)
         return await super().__aenter__()
 
     async def __aexit__(self, *args) -> None:
-        SESSION_STACK[current_thread()].pop()
+        NCM_SESSION.reset(self.session_ctx_var_token)
         return await super().__aexit__(*args)
 
     def __init__(self, *args, **kwargs):
@@ -203,7 +200,6 @@ class Session(httpx.AsyncClient):
             self._session_info[k][1](self, v)
         return True
 
-
 class SessionManager:
     """PyNCM Session 单例储存对象"""
 
@@ -211,12 +207,12 @@ class SessionManager:
         self.session = Session()
 
     def get(self):
-        if SESSION_STACK.get(current_thread(), None):
-            return SESSION_STACK[current_thread()][-1]
+        if NCM_SESSION.get(None):
+            return NCM_SESSION.get()
         return self.session
 
     def set(self, session):
-        if SESSION_STACK.get(current_thread(), None):
+        if NCM_SESSION.get(None):
             raise Exception(
                 "Current Session is in `with` block, which cannot be reassigned."
             )
